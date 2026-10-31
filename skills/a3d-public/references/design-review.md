@@ -114,6 +114,30 @@ proposed envelopes and dimensions as reversible parameters.
 Extract the relationships that shape the result: relative volume, silhouette,
 surface transitions, spacing and integration of secondary forms.
 
+### Reference image intake
+
+When a photo or render drives the design, read it in this order before writing
+intent. Describe the object in object space (front, rear, top, bottom, lateral),
+not by its position in the frame. Mark each statement `observed` or `inferred`;
+the ranking and ask-or-assume rules in `evidence-contract.md` §Evidence rules
+decide what each one may become.
+
+1. Form: the few primitives or lofted sections that make up the envelope, the
+   symmetry (bilateral, radial, none), and proportions stated against one named
+   dimension, never "large" or "thin" alone.
+2. Parts and joins: major parts, then their sub-features. For every pair that
+   touches, name the join (snap, screw, hinge, slide, press fit, adhesive) or
+   record it as unknown. A visible seam suggests a split line, not its depth.
+3. Hidden scope: list what this view cannot show. For enclosures check rear and
+   bottom faces, ports and openings, fasteners, wall thickness, and the internal
+   component stack. Each item becomes an `assumptions` entry with a reversible
+   value, or a question when it changes function or identity.
+4. Landmarks: keep the 3-7 observed features that make this object recognizable
+   and write them as checkable `visual.landmarks`.
+
+Dimensions read from the photo carry `source: "reference"` or `"inferred"` with
+medium or low confidence. Only drawings, specifications, or user values are high.
+
 For a new model with unresolved construction, `a3d draft <name>_build.py` previews
 the same BuildSession source before intent/feature registration when it declares
 part names. For an existing contract-bound source, supply `--intent INTENT.json`.

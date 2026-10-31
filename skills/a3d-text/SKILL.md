@@ -16,6 +16,7 @@ Unless tolerances/fits override them, exterior dimensions use nominal ±0.1 mm a
 ## Draft and review
 
 Prefer DSL, including for enclosures; name unsupported geometry/binding before Python fallback.
+Reference photo/render: read design-review.md §Reference image intake before intent.
 Batch only needed contracts: `a3d agent capabilities '{"designOps":["open_box","hole"]}'` (Python: symbols).
 Results page by output size. Follow page.nextRequest with `a3d agent inspect`; do not preload contracts or references.
 Starter: configurable cube; full: `$AMAGINE3D_SKILL_DIR/examples/open_box.a3d.json`; edit: `$AMAGINE3D_RUNTIME_DIR/references/parametric-design.md`:
@@ -73,6 +74,6 @@ Repair owning datums/features; unchanged fully bound success is reused. At pass=
 Report status, visualReviewRequired, review scope and unresolved warnings accurately; automatic acceptance alone does not prove manufacturing readiness.
 Thin-wall sampling minima/p05 do not prove a false alarm: retain warnings unless a targeted BRep/section check at the risk location establishes the cause.
 Use printOrientationEvidence for support/bridge claims; rotateDegreesXYZ is the actual export pose.
-Read `$AMAGINE3D_RUNTIME_DIR/references/bambu-printability.md` and use a3d layout when orientation/packing matters; never scale targets or switch printer to silence failure.
-Surface/finishing issues use `$AMAGINE3D_RUNTIME_DIR/references/surface-shell.md`; installed displays use `$AMAGINE3D_RUNTIME_DIR/references/installed-displays.md`.
+Read bambu-printability.md and use a3d layout when orientation/packing matters; never scale targets or switch printer to silence failure.
+Surface/finishing issues use surface-shell.md; installed displays use installed-displays.md.
 Uncommon printed color topology uses `$AMAGINE3D_RUNTIME_DIR/color/BACKEND.md`; read internals only if the public contract and specific error are insufficient.

@@ -361,7 +361,7 @@ ${extraUsage}  a3d agent context
   a3d reference IMAGE [--out REPORT.json]
   a3d search QUERY [--max-results N] [--search-depth MODE] [--topic TOPIC] [--time-range RANGE] [--answer MODE]
   a3d draft SOURCE.py [--intent INTENT.json] [--timeout-seconds 120]
-  a3d measure MODEL.step [--section-z MM] [--section-x MM] [--section-y MM] [--preview] [--out FILE]
+  a3d measure MODEL.step [--section-z MM] [--section-x MM] [--section-y MM] [--preview] [--component] [--out FILE]
   a3d compare BEFORE AFTER --view front [--out FILE] [--report FILE]
   a3d compile SCENE.json --intent INTENT.json --source BUILD.py [--output-dir DIR] [--marker FILE]
 

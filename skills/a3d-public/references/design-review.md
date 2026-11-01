@@ -135,8 +135,20 @@ decide what each one may become.
 4. Landmarks: keep the 3-7 observed features that make this object recognizable
    and write them as checkable `visual.landmarks`.
 
-Dimensions read from the photo carry `source: "reference"` or `"inferred"` with
-medium or low confidence. Only drawings, specifications, or user values are high.
+When a maker STEP or drawing of the component is available, measure it before
+placing anything from the photo. Run `a3d measure COMPONENT.step --component`
+first for world bounds, then add `--section-z` through the board thickness and at
+connector heights. The board plane is the section whose largest island matches
+the published outline; its holes give mounting centers and diameters. The photo
+then only decides which features matter and how the part is oriented.
+
+Dimension `source` is one of `user`, `standard`, `reference`, `inferred`.
+Values measured from a maker STEP or drawing, or published in its datasheet, are
+`reference` with high confidence; name the file or page in `reference_files`.
+Values scaled from the photo are `inferred` with medium or low confidence.
+
+When new evidence replaces a value, rewrite the assumption that stated the old
+one in the revised intent. Do not keep both.
 
 For a new model with unresolved construction, `a3d draft <name>_build.py` previews
 the same BuildSession source before intent/feature registration when it declares

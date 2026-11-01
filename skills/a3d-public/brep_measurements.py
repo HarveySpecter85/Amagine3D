@@ -91,6 +91,30 @@ def _solids(shape: Shape) -> list:
     return solids
 
 
+def _component_solids(shape: Shape) -> tuple[list, int]:
+    """Valid solids of a maker assembly, checked one by one, and the excluded count.
+
+    Supplier STEPs often carry loose surfaces (labels, silkscreen) or a defective
+    solid that invalidate the whole compound. Those never become material here.
+    """
+    if not isinstance(shape, Shape):
+        raise ValueError("component measurement requires a BRep")
+    solids = list(shape.solids())
+    valid = [solid for solid in solids if solid.is_valid]
+    if not valid:
+        raise ValueError("component measurement found no valid solids")
+    return valid, len(solids) - len(valid)
+
+
+def _crosses(solid: Shape, plane: Plane) -> bool:
+    box = _bounds(solid)
+    heights = [plane.to_local_coords((x, y, z)).Z
+               for x in (box["min"][0], box["max"][0])
+               for y in (box["min"][1], box["max"][1])
+               for z in (box["min"][2], box["max"][2])]
+    return min(heights) <= 0 <= max(heights)
+
+
 def _section_preview(faces: list, plane: Plane, path: Path, label: str | None) -> dict:
     """Render the already measured faces; display sampling never feeds measurements."""
     from PIL import Image, ImageDraw
@@ -130,7 +154,7 @@ def _section_preview(faces: list, plane: Plane, path: Path, label: str | None) -
 
 
 def measure_section(shape: Shape, plane: Plane, *, label: str | None = None,
-                    preview: str | Path | None = None) -> dict:
+                    preview: str | Path | None = None, component: bool = False) -> dict:
     """Measure a specified plane in the final part's coordinates, in mm/mm².
 
     Each solid's positive-area section faces remain separate material islands.
@@ -145,10 +169,12 @@ def measure_section(shape: Shape, plane: Plane, *, label: str | None = None,
     ):
         raise ValueError("plane must have finite origin and axes")
     # section() may clean its input's triangulation cache; isolate the caller.
-    solids = _solids(deepcopy(shape))
+    solids = _component_solids(deepcopy(shape))[0] if component else _solids(deepcopy(shape))
     islands = []
     measured_faces = []
     for solid_index, solid in enumerate(solids):
+        if component and not _crosses(solid, plane):
+            continue
         # build123d uses a finite cutting face. Recenter that face on the solid's
         # projection, so an equivalent plane with a distant in-plane origin
         # cannot miss the solid. Measurement coordinates still use the input plane.
@@ -199,12 +225,15 @@ def measure_section(shape: Shape, plane: Plane, *, label: str | None = None,
 
 
 def measure_step(path: str | Path, sections: Mapping[str, Plane] | None = None, *,
-                 preview_dir: str | Path | None = None) -> dict:
+                 preview_dir: str | Path | None = None, component: bool = False) -> dict:
     """Read a final STEP; bind its SHA-256, world bounds and named exact sections.
 
     ``sections={"foot": Plane.XY, "mouth": Plane.XY.offset(95)}`` preserves the
     caller's chosen planes and labels. STEP is imported in millimetres. Python
     build source and intent parameters are never read or executed.
+    ``component=True`` reads a maker's assembly STEP to locate features: solids are
+    validated one by one and only valid solids are measured. It is never
+    manufacturing acceptance for a printed part.
     """
     # The session sandbox can allow this file while denying metadata on its
     # ancestors. Match cad_compile's non-strict resolution, then check the file.
@@ -217,19 +246,34 @@ def measure_step(path: str | Path, sections: Mapping[str, Plane] | None = None, 
         raise ValueError("sections must map labels to Plane objects")
     input_hash = sha256(path.read_bytes()).hexdigest()
     shape = import_step(path)
-    solids = _solids(shape)
+    if component:
+        solids, excluded = _component_solids(shape)
+        boxes = [_bounds(solid) for solid in solids]
+        low = [min(box["min"][i] for box in boxes) for i in range(3)]
+        high = [max(box["max"][i] for box in boxes) for i in range(3)]
+        bounds = {"min": low, "max": high, "size": [b - a for a, b in zip(low, high)]}
+    else:
+        solids, bounds = _solids(shape), _bounds(shape)
     result = {
         "schema": "brep-measurements/v1",
         "input": {"path": str(path), "sha256": input_hash, "format": "STEP"},
         "units": {"length": "mm", "area": "mm2", "volume": "mm3"},
         "coordinate_frame": "input-part",
-        "world_bounds_mm": _bounds(shape), "solid_count": len(solids),
+        "world_bounds_mm": bounds, "solid_count": len(solids),
         "sum_solid_volume_mm3": sum(float(solid.volume) for solid in solids),
-        "sections": [measure_section(shape, plane, label=label,
+        "sections": [measure_section(shape, plane, label=label, component=component,
                      preview=Path(preview_dir) / f"section-{index}.png" if preview_dir is not None else None)
                      for index, (label, plane) in enumerate((sections or {}).items())],
         "notes": list(_NOTES),
     }
+    if component:
+        result["mode"] = "component"
+        result["excluded_invalid_solid_count"] = excluded
+        result["notes"].append(
+            "Component mode: a maker assembly measured to locate features. Solids are validated one by "
+            "one; loose surfaces and invalid solids are never material, and bounds cover valid solids "
+            "only. This is not manufacturing acceptance for a printed part."
+        )
     if sha256(path.read_bytes()).hexdigest() != input_hash:
         raise ValueError("STEP changed during measurement; result discarded")
     return result
@@ -281,6 +325,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path,
                         help="Full report path (default: <model-stem>_measurements.json in workspace)")
     parser.add_argument("--preview", action="store_true", help="Render only the explicitly requested sections")
+    parser.add_argument("--component", action="store_true",
+                        help="Maker assembly STEP: validate solids one by one; locates features, not acceptance")
     args = parser.parse_args(argv)
     try:
         workspace = args.workspace.resolve()
@@ -303,7 +349,8 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--preview needs at least one explicit section")
         preview_dir = (_workspace_path(workspace, Path(".amagine3d-measurements") / str(uuid4()),
                                         "section previews", must_exist=False) if args.preview else None)
-        result = _length_report(measure_step(model, planes, preview_dir=preview_dir))
+        result = _length_report(measure_step(model, planes, preview_dir=preview_dir,
+                                             component=args.component))
         encoded = json.dumps(result, indent=2, allow_nan=False) + "\n"
         output.write_text(encoded, encoding="utf-8")
         fields = ("label", "plane", "status", "outer_envelope", "material_island_count",
@@ -316,6 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             "units": result["units"], "coordinate_frame": result["coordinate_frame"],
             "length_report_resolution_mm": result["length_report_resolution_mm"],
             "world_bounds_mm": result["world_bounds_mm"], "solid_count": result["solid_count"],
+            **{key: result[key] for key in ("mode", "excluded_invalid_solid_count") if key in result},
             "sections": summaries, "section_count": len(result["sections"]),
             "returned_section_count": len(summaries),
             "omitted_section_count": len(result["sections"]) - len(summaries),

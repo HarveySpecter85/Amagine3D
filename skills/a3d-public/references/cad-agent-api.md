@@ -276,6 +276,12 @@ The image is an illustrative sampled outline; the bound report contains exact
 section measurements. Finite sections do not establish global minimum walls.
 Measurement reports are queryable through `a3d agent inspect`.
 
+`--component` reads a maker's assembly STEP (a board, a module) that fails the
+whole-shape validity check because of loose surfaces or one defective part. It
+validates solids one by one, measures only valid solids, and reports
+`excluded_invalid_solid_count`. Use it to locate a component's outline, holes and
+connectors; it is never acceptance for a printed part.
+
 The task API records operation sizes, duration and reuse in workspace metrics.
 Chat attempts independently record the five SDK token counters and their true
 outcome, including failures/cancellation. Missing counts remain unknown; cached

@@ -142,6 +142,17 @@ connector heights. The board plane is the section whose largest island matches
 the published outline; its holes give mounting centers and diameters. The photo
 then only decides which features matter and how the part is oriented.
 
+Place each standoff, boss or pilot at a measured hole center, one by one; never
+assume a symmetric corner pattern, because board holes rarely are. State the
+mapping from STEP axes to the enclosure frame in `assumptions`, then check each
+standoff center against its hole center after the build.
+
+A declared installation check (clearance, insertion, support) stays declared in
+every revision. If the witness cannot represent the real support, such as
+standoffs under a board, correct the witness from the measured outline and hole
+pattern, or report that requirement as unverified. Never remove a check so the
+compile passes.
+
 Dimension `source` is one of `user`, `standard`, `reference`, `inferred`.
 Values measured from a maker STEP or drawing, or published in its datasheet, are
 `reference` with high confidence; name the file or page in `reference_files`.

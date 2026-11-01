@@ -175,6 +175,55 @@ class BrepMeasurementsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "plane"):
             measurements.measure_section(Box(10, 10, 10), None)
 
+    @staticmethod
+    def _maker_assembly(extra=()):
+        # A maker STEP: a board with one mounting hole, a part above it, and a
+        # self-intersecting loose label face that invalidates the whole compound.
+        label = Face(Wire.make_polygon([(0, 0, 0), (10, 10, 0), (10, 0, 0), (0, 10, 0)], close=True))
+        board = Box(40, 20, 2) - Pos(15, 5, 0) * Cylinder(1.6, 4)
+        return Compound([board, Pos(0, 0, 10) * Box(5, 5, 5), Pos(0, 0, 20) * label, *extra])
+
+    def test_component_mode_measures_a_maker_assembly_that_strict_mode_rejects(self):
+        assembly = self._maker_assembly()
+        self.assertFalse(assembly.is_valid)
+        with self.assertRaisesRegex(ValueError, "valid BRep"):
+            measurements.measure_section(assembly, Plane.XY)
+        cut = measurements.measure_section(assembly, Plane.XY, component=True)
+        self.assertEqual(cut["status"], "material")
+        self.assertEqual(cut["material_island_count"], 1)
+        self.assertVectorClose([cut["outer_envelope"]["width_u_mm"], cut["outer_envelope"]["depth_v_mm"]], [40, 20])
+        (hole,) = cut["material_islands"][0]["holes"]
+        self.assertAlmostEqual(hole["envelope"]["width_u_mm"], 3.2, places=6)
+        self.assertVectorClose(hole["envelope"]["center_uv_mm"], [15, 5])
+
+    def test_component_cli_excludes_invalid_solids_and_keeps_strict_default(self):
+        defective = Pos(0, 0, 30) * extrude(
+            Face(Wire.make_polygon([(0, 0, 0), (10, 10, 0), (10, 0, 0), (0, 10, 0)], close=True)), 2)
+        assembly = self._maker_assembly([defective])
+        path = self.work / "maker.step"
+        export_step(Box(1, 1, 1), path)  # real bytes to hash; the import returns the assembly
+        out = self.work / "maker_measurements.json"
+        with patch.object(measurements, "import_step", return_value=assembly):
+            with redirect_stdout(io.StringIO()) as output:
+                code = measurements.main([str(path), "--workspace", str(self.work), "--component",
+                                          "--section-z", "0", "--out", str(out)])
+            self.assertEqual(code, 0)
+            summary = json.loads(output.getvalue())
+            self.assertEqual(summary["mode"], "component")
+            self.assertEqual(summary["excluded_invalid_solid_count"], 1)
+            self.assertEqual(summary["solid_count"], 2)
+            # Valid solids span z -1..12.5; the label (z=20) and the invalid solid (z=30) are excluded.
+            self.assertVectorClose(summary["world_bounds_mm"]["size"], [40, 20, 13.5])
+            self.assertEqual(summary["sections"][0]["hole_count"], 1)
+            report = json.loads(out.read_text())
+            self.assertTrue(any("Component mode" in note for note in report["notes"]))
+            with redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit):
+                measurements.main([str(path), "--workspace", str(self.work), "--out", str(out)])
+            self.assertIn("valid BRep", error.getvalue())
+        strict = measurements.measure_step(path)
+        self.assertNotIn("mode", strict)
+        self.assertNotIn("excluded_invalid_solid_count", strict)
+
     def test_step_readback_measures_finished_fillet_and_binds_input_bytes(self):
         box = Pos(0, 0, 5) * Box(54, 40, 10)
         top_edges = [edge for edge in box.edges() if abs(edge.center().Z - 10) < 1e-8]

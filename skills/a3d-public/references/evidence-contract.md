@@ -397,3 +397,10 @@ rubric proportional to the request, usually 3-7 identity-critical landmarks for
 recognizable objects rather than every small decorative detail. A failed
 must-have landmark remains failed even if mesh integrity and dimensions pass;
 optional micro-detail gaps may be reported as compromises.
+
+Write each landmark so a reviewer can fail it:
+
+- weak: "rounded case like the photo"; strong: "front-face edges share one
+  radius; the USB-C opening is centered on the bottom face"
+- weak: "same screen look"; strong: "the display window sits inside an even
+  bezel, offset toward the top edge as in the front view"

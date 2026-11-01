@@ -114,6 +114,53 @@ proposed envelopes and dimensions as reversible parameters.
 Extract the relationships that shape the result: relative volume, silhouette,
 surface transitions, spacing and integration of secondary forms.
 
+### Reference image intake
+
+When a photo or render drives the design, read it in this order before writing
+intent. Describe the object in object space (front, rear, top, bottom, lateral),
+not by its position in the frame. Mark each statement `observed` or `inferred`;
+the ranking and ask-or-assume rules in `evidence-contract.md` §Evidence rules
+decide what each one may become.
+
+1. Form: the few primitives or lofted sections that make up the envelope, the
+   symmetry (bilateral, radial, none), and proportions stated against one named
+   dimension, never "large" or "thin" alone.
+2. Parts and joins: major parts, then their sub-features. For every pair that
+   touches, name the join (snap, screw, hinge, slide, press fit, adhesive) or
+   record it as unknown. A visible seam suggests a split line, not its depth.
+3. Hidden scope: list what this view cannot show. For enclosures check rear and
+   bottom faces, ports and openings, fasteners, wall thickness, and the internal
+   component stack. Each item becomes an `assumptions` entry with a reversible
+   value, or a question when it changes function or identity.
+4. Landmarks: keep the 3-7 observed features that make this object recognizable
+   and write them as checkable `visual.landmarks`.
+
+When a maker STEP or drawing of the component is available, measure it before
+placing anything from the photo. Run `a3d measure COMPONENT.step --component`
+first for world bounds, then add `--section-z` through the board thickness and at
+connector heights. The board plane is the section whose largest island matches
+the published outline; its holes give mounting centers and diameters. The photo
+then only decides which features matter and how the part is oriented.
+
+Place each standoff, boss or pilot at a measured hole center, one by one; never
+assume a symmetric corner pattern, because board holes rarely are. State the
+mapping from STEP axes to the enclosure frame in `assumptions`, then check each
+standoff center against its hole center after the build.
+
+A declared installation check (clearance, insertion, support) stays declared in
+every revision. If the witness cannot represent the real support, such as
+standoffs under a board, correct the witness from the measured outline and hole
+pattern, or report that requirement as unverified. Never remove a check so the
+compile passes.
+
+Dimension `source` is one of `user`, `standard`, `reference`, `inferred`.
+Values measured from a maker STEP or drawing, or published in its datasheet, are
+`reference` with high confidence; name the file or page in `reference_files`.
+Values scaled from the photo are `inferred` with medium or low confidence.
+
+When new evidence replaces a value, rewrite the assumption that stated the old
+one in the revised intent. Do not keep both.
+
 For a new model with unresolved construction, `a3d draft <name>_build.py` previews
 the same BuildSession source before intent/feature registration when it declares
 part names. For an existing contract-bound source, supply `--intent INTENT.json`.

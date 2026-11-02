@@ -54,6 +54,7 @@ const unitB = [
   'test_print_plates',
   'test_self_tapping_connections',
   'test_skill_shared_files',
+  'test_snap_arm_cae',
   'test_source_diagnostics',
   'test_text_a3d_authoring',
   'test_text_a3d_color_guardrails',

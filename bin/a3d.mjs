@@ -33,6 +33,7 @@ const commands = {
   profile: 'bambu_profile.py',
   reference: 'reference_analyze.py',
   scene: 'scene_contract.py',
+  snapcheck: 'snap_arm_cae.py',
 };
 
 const guides = {
@@ -358,6 +359,7 @@ ${extraUsage}  a3d agent context
   a3d intent INTENT.json
   a3d layout BOUNDS.json --profile PROFILE.json [--max-plates N --spacing-mm N --edge-margin-mm N --out PLAN.json]
   a3d scene SCENE.json
+  a3d snapcheck --step PART.step --intent CAE_INTENT.json --out DIR (optional snap-arm strain check; needs A3D_CAE_PYTHON and A3D_CAE_REPO, else reports skipped; never blocks)
   a3d reference IMAGE [--out REPORT.json]
   a3d search QUERY [--max-results N] [--search-depth MODE] [--topic TOPIC] [--time-range RANGE] [--answer MODE]
   a3d draft SOURCE.py [--intent INTENT.json] [--timeout-seconds 120]
@@ -742,7 +744,7 @@ if (command === 'search') {
     console.error('Managed Python is missing. Run npm run python:setup.');
     process.exit(2);
   }
-  const workspaceCommands = new Set(['compile', 'draft', 'measure', 'compare']);
+  const workspaceCommands = new Set(['compile', 'draft', 'measure', 'compare', 'snapcheck']);
   if (workspaceCommands.has(command) && args.some((arg) => arg === '--workspace' || arg.startsWith('--workspace='))) {
     console.error(`a3d ${command} fixes --workspace to the current session directory.`);
     process.exit(2);

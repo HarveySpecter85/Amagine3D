@@ -1,0 +1,164 @@
+{
+  "blocking": false,
+  "convergence": {
+    "force_for_catch": {
+      "converged": true,
+      "finest_pair_change_pct": 0.3356675969276571,
+      "gci_fine_pct": 0.357591387805512,
+      "order": 2.239858286150218,
+      "values": [
+        7.4045201683737965,
+        7.351071488128334,
+        7.326478872557408
+      ]
+    },
+    "root_peak_strain": {
+      "converged": true,
+      "finest_pair_change_pct": 0.9662942220556043,
+      "gci_fine_pct": null,
+      "order": null,
+      "values": [
+        1.122563337914905,
+        1.2203198731520928,
+        1.2086408464870841
+      ]
+    }
+  },
+  "hand_calc": {
+    "fe_force_over_hand": 0.9348892311336277,
+    "fe_strain_over_hand": 1.2338208641222317,
+    "force_n": 7.836734693877551,
+    "note": "rigid root, no fillet, no hook; the FE arm is expected to be softer and to peak higher",
+    "root_strain_pct": 0.9795918367346939,
+    "stiffness_n_per_mm": 7.836734693877551
+  },
+  "inputs": {
+    "fixed_face": "face_006",
+    "intent": {
+      "arm": {
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "length_to_load_mm": 17.5,
+        "root_point": [
+          40.0,
+          3.0,
+          1.0
+        ],
+        "thickness_mm": 2.0,
+        "width_mm": 6.0
+      },
+      "arm_across_layers": true,
+      "catch_mm": 1.0,
+      "fixed_point": [
+        36.0,
+        3.0,
+        1.0
+      ],
+      "load_direction": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "load_point": [
+        57.5,
+        3.0,
+        3.0
+      ],
+      "material": "PLA",
+      "mesh_sizes_mm": [
+        0.8,
+        0.56,
+        0.4
+      ],
+      "part": "clip",
+      "repeated_use": true
+    },
+    "load_face": "face_009",
+    "step": "clip.step",
+    "step_sha256": "ad67f239e0f42e1ce1dfab496778a0b5bfa9bde629896afc62aeb5ba48783e6f"
+  },
+  "limitations": [
+    "Linear elastic, one load case; no fatigue, creep, stress relaxation or contact.",
+    "Peak strain is axial stress at the arm root divided by E; it is a screening number.",
+    "FDM anisotropy is handled only through the declared derates.",
+    "Moduli in the built-in table are generic, not datasheet values.",
+    "Screening evidence, not certification or a production-safety claim."
+  ],
+  "material": {
+    "E_mpa": 3500.0,
+    "allowable_strain_pct": 1.2,
+    "derates": [
+      {
+        "factor": 0.5,
+        "reason": "arm_across_layers"
+      },
+      {
+        "factor": 0.6,
+        "reason": "repeated_use"
+      }
+    ],
+    "name": "PLA",
+    "notes": [
+      "E_mpa is a generic typical value, not a datasheet value"
+    ],
+    "nu": 0.36,
+    "origin": "table"
+  },
+  "meshes": [
+    {
+      "accuracy_band": "reliable",
+      "deflection_at_1n_mm": 0.1350526404494382,
+      "force_for_catch_n": 7.4045201683737965,
+      "mesh_mm": 0.8,
+      "nodes": 9678,
+      "root_peak_strain_pct": 1.122563337914905
+    },
+    {
+      "accuracy_band": "reliable",
+      "deflection_at_1n_mm": 0.13603459055118117,
+      "force_for_catch_n": 7.351071488128334,
+      "mesh_mm": 0.56,
+      "nodes": 28178,
+      "root_peak_strain_pct": 1.2203198731520928
+    },
+    {
+      "accuracy_band": "reliable",
+      "deflection_at_1n_mm": 0.1364912145922747,
+      "force_for_catch_n": 7.326478872557408,
+      "mesh_mm": 0.4,
+      "nodes": 62706,
+      "root_peak_strain_pct": 1.2086408464870841
+    }
+  ],
+  "reasons": [
+    "exceeds_allowable: 1.21 % > 1.20 %"
+  ],
+  "repairHints": {
+    "arm_thickness_mm": 1.589,
+    "basis": "first-order beam scaling of the FE result: strain ~ catch, ~ thickness, ~ 1/length^2; a thinner or longer arm is also softer; re-run to confirm",
+    "length_to_load_mm": 19.636,
+    "max_catch_mm": 0.794,
+    "target_strain_pct": 0.96
+  },
+  "result": {
+    "allowable_strain_pct": 1.2,
+    "catch_mm": 1.0,
+    "force_n": 7.326478872557408,
+    "root_peak_strain_pct": 1.2086408464870841
+  },
+  "schema": "a3d-snap-arm-cae/v1",
+  "status": "warn",
+  "strain_over_allowable": 1.0072007054059036,
+  "versions": {
+    "build123d": "0.10.0",
+    "cad_cae_copilot_commit": "b98b4d50aa147b897eae9a56a70684412d8d9c3d",
+    "cad_cae_copilot_matches_pin": true,
+    "cad_cae_copilot_pinned_commit": "b98b4d50aa147b897eae9a56a70684412d8d9c3d",
+    "calculix": "This is Version 2.23",
+    "gmsh": "4.15.2",
+    "python": "3.11.18"
+  }
+}

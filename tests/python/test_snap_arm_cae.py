@@ -211,6 +211,42 @@ class WorkspaceTests(unittest.TestCase):
             with self.assertRaises(SnapArmError):
                 cae.ensure_inside(root, root / "link" / "secret.step")
 
+    def test_existing_links_in_the_output_folder_are_refused_and_never_followed(self):
+        env = {k: v for k, v in os.environ.items() if k not in {"A3D_CAE_PYTHON", "A3D_CAE_REPO"}}
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as other, \
+                mock.patch.dict(os.environ, env, clear=True):
+            root, victim = Path(tmp), Path(other) / "victim.txt"
+            victim.write_text("keep")
+            inside = root / "inside.json"
+            inside.write_text("{}")
+            for name, target in (("cae-report.json", victim), ("snap_arm_cae.aieng", victim),
+                                 ("cae-report.json", inside)):          # outside target, then a link that stays inside
+                with self.subTest(link=name, target=target.name):
+                    out = root / f"out-{name}-{target.name}"
+                    out.mkdir()
+                    (out / name).symlink_to(target)
+                    for flags in (["--workspace", str(root)], []):
+                        code = cae.main(["--step", str(root / "a.step"), "--intent", str(root / "i.json"),
+                                         "--out", str(out), *flags])
+                        self.assertEqual(code, 2)
+                    self.assertEqual(victim.read_text(), "keep")
+                    self.assertEqual(inside.read_text(), "{}")
+
+    def test_write_atomic_replaces_a_link_instead_of_following_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            victim, dest, source = root / "victim.txt", root / "dest.json", root / "src.bin"
+            victim.write_text("keep")
+            source.write_bytes(b"payload")
+            dest.symlink_to(victim)
+            cae.write_atomic(dest, b"{}")
+            self.assertFalse(dest.is_symlink())
+            self.assertEqual((dest.read_bytes(), victim.read_text()), (b"{}", "keep"))
+            dest.unlink()
+            cae.write_atomic(dest, source=source)
+            self.assertEqual(dest.read_bytes(), b"payload")
+            self.assertEqual([p.name for p in root.iterdir() if p.name.startswith(".snap-arm-")], [])
+
     def test_cli_refuses_outside_paths_and_reports_malformed_intent(self):
         env = {k: v for k, v in os.environ.items() if k not in {"A3D_CAE_PYTHON", "A3D_CAE_REPO"}}
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, env, clear=True):

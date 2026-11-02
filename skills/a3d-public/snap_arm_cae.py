@@ -20,8 +20,10 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -299,6 +301,32 @@ def ensure_inside(root: Path, *paths: Path) -> None:
             raise SnapArmError(f"{path} is outside the session workspace")
 
 
+def refuse_symlinks(out_dir: Path, *names: str) -> None:
+    """Refuse to write through a symbolic link that already exists in the output folder."""
+    for name in names:
+        if (out_dir / name).is_symlink():
+            raise SnapArmError(f"{out_dir / name} is a symbolic link; refusing to write through it")
+
+
+def write_atomic(dest: Path, data: bytes | None = None, *, source: Path | None = None) -> None:
+    """Write via a temp file in the same folder, then os.replace: a link at dest is replaced, never followed."""
+    fd, tmp = tempfile.mkstemp(dir=dest.parent, prefix=".snap-arm-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            if source is not None:
+                with open(source, "rb") as origin:
+                    shutil.copyfileobj(origin, handle)
+            else:
+                handle.write(data or b"")
+        os.replace(tmp, dest)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+OUTPUT_NAMES = ("cae-report.json", "snap_arm_cae.aieng", "work")
+
+
 def skipped_report(reason: str) -> dict[str, Any]:
     return {"schema": SCHEMA, "status": "skipped", "blocking": False, "reasons": [reason],
             "limitations": list(LIMITATIONS)}
@@ -319,14 +347,14 @@ def import_step_code(path: Path) -> str:
 
 def run_study(step_path: Path, intent: Mapping[str, Any], out_dir: Path, repo: Path) -> dict[str, Any]:
     """Solve on three meshes and build the report. Needs the CAE environment."""
-    import shutil
-    import tempfile
     import zipfile
 
     spec = validate_intent(intent)
     material = resolve_material(spec["material"], arm_across_layers=spec["arm_across_layers"],
                                 repeated_use=spec["repeated_use"])
+    out_dir = out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+    refuse_symlinks(out_dir, *OUTPUT_NAMES)
     work = out_dir / "work"
     if work.exists():
         shutil.rmtree(work)
@@ -400,7 +428,7 @@ def run_study(step_path: Path, intent: Mapping[str, Any], out_dir: Path, repo: P
             with zipfile.ZipFile(pkg) as zf:
                 frd_name = next(n for n in zf.namelist()
                                 if n.startswith(f"simulation/runs/{run_id}/") and n.endswith(".frd"))
-                frd = Path(tempfile.mkdtemp()) / "result.frd"
+                frd = work / f"{run_id}.frd"
                 frd.write_bytes(zf.read(frd_name))
                 nodes = parse_mesh(zf.read("simulation/mesh/mesh.inp").decode())[0]
             fields = {k: v[0]["node_data"] for k, v in parse_frd_steps(frd).items()}
@@ -421,7 +449,7 @@ def run_study(step_path: Path, intent: Mapping[str, Any], out_dir: Path, repo: P
                          "deflection_at_1n_mm": defl, "force_for_catch_n": scale,
                          "root_peak_strain_pct": peak * scale / material["E_mpa"] * 100})
 
-        shutil.copy(pkg, out_dir / "snap_arm_cae.aieng")
+        write_atomic(out_dir / "snap_arm_cae.aieng", source=pkg)
     finally:
         os.chdir(previous)
         shutil.rmtree(work, ignore_errors=True)   # keep only the report and the evidence package
@@ -481,14 +509,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--out", required=True, type=Path, help="output directory")
     parser.add_argument("--workspace", type=Path, help="session workspace; every path must stay inside it")
     args = parser.parse_args(argv)
-    if args.workspace is not None:
-        try:
-            ensure_inside(args.workspace, args.step, args.intent, args.out)
-        except SnapArmError as exc:
-            print(json.dumps({"status": "error", "reasons": [str(exc)]}))
-            return 2
-    args.out.mkdir(parents=True, exist_ok=True)
-    report_path = args.out / "cae-report.json"
+    try:
+        if args.workspace is not None:
+            ensure_inside(args.workspace, args.step, args.intent, args.out,
+                          *(args.out / name for name in OUTPUT_NAMES))   # resolves links that already exist
+        args.out.mkdir(parents=True, exist_ok=True)
+        refuse_symlinks(args.out, *OUTPUT_NAMES)
+        if args.workspace is not None:
+            ensure_inside(args.workspace, args.out)                      # re-check after mkdir
+    except SnapArmError as exc:
+        print(json.dumps({"status": "error", "reasons": [str(exc)]}))
+        return 2
+    report_path = args.out.resolve() / "cae-report.json"
 
     python, repo = os.environ.get("A3D_CAE_PYTHON"), os.environ.get("A3D_CAE_REPO")
     if not python or not repo:
@@ -507,7 +539,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (SnapArmError, ValueError, OSError) as exc:    # includes unreadable or malformed intent JSON
             report = {"schema": SCHEMA, "status": "error", "blocking": False, "reasons": [str(exc)],
                       "limitations": list(LIMITATIONS)}
-    report_path.write_text(json.dumps(report, indent=2, default=str))
+    write_atomic(report_path, json.dumps(report, indent=2, default=str).encode())
     print(json.dumps({"status": report["status"], "summary": summarize(report), "report": str(report_path)}))
     return 0
 

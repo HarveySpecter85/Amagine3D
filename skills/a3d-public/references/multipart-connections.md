@@ -274,3 +274,11 @@ cylinder proves the blind end. This catches a blocked hole even when a small
 center pinhole makes its axis look open. Every part must remain one fused body.
 A failed recipe or physical probe is a build failure, and manufacturing
 artifacts are written only after the probes pass.
+
+## Snap arms: optional strain check
+
+A `snap-fit` interface proves clearance, engagement and proximity, not that the
+arm survives bending. When a cantilever snap arm matters, `a3d snapcheck` solves it
+with CalculiX and reports root strain against the material allowable. It is
+advisory and skips itself when the solver stack is not installed. See
+`references/snap-arm-cae.md`.

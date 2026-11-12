@@ -72,6 +72,17 @@ _CAPABILITIES: tuple[dict[str, Any], ...] = (
             "assembly-proximity",
             "support-contact-advisory",
         ),
+        # Run on demand with `a3d snapcheck`; never part of compile and never blocking.
+        "advisoryChecks": (
+            {
+                "id": "arm-strain/v1",
+                "command": "a3d snapcheck",
+                "blocking": False,
+                "optional": True,
+                "requiresEnv": ("A3D_CAE_PYTHON", "A3D_CAE_REPO"),
+                "reference": "references/snap-arm-cae.md",
+            },
+        ),
     },
     {
         "id": "self-tapping-screw/v1",
